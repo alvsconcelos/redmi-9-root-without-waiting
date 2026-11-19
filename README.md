@@ -1,110 +1,74 @@
-# Redmi 9 — bootloader destravado + root no macOS, sem Mi Unlock e sem chip SIM
+# Redmi 9 com bootloader destravado e root, no macOS, sem Mi Unlock
 
-> Desbloqueei o bootloader e instalei o Magisk num **Redmi 9 (`galahad`, MT6768,
-> MIUI 13 / Android 12)** usando só um **Mac Apple Silicon** e um cabo USB.
-> Sem Mi Unlock, sem esperar 7 dias, sem cartão SIM e sem Windows.
->
-> Funcionou no meu aparelho, de ponta a ponta. **Use por sua conta e risco** —
-> leia o [aviso](#aviso--disclaimer) antes de começar.
+Em novembro de 2026 eu destravei o bootloader e instalei o Magisk num Redmi 9
+(`galahad`, MT6768, MIUI 13) usando um MacBook com Apple Silicon e um cabo USB.
+Sem Mi Unlock, sem os 7 dias de espera, sem cartão SIM e sem Windows.
 
-[Português](#a-história) · [English](#english)
+Funcionou no meu aparelho. Antes de repetir, leia o aviso lá no fim. É por sua
+conta e risco.
 
----
+[Português](#por-que-eu-fiz-isso) · [English](#english)
 
-## A história
+## Por que eu fiz isso
 
-Eu tinha um Redmi 9 velho parado na gaveta. Sem uso, bateria ainda boa, e eu
-queria transformar ele em uma coisinha útil em casa: um servidorzinho para
-rodar AdGuard Home, uns containers, um painel de monitoramento — enfim, aquele
-projeto de fim de semana.
+Tinha um Redmi 9 parado na gaveta há mais de um ano. Bateria boa, tela inteira,
+nenhum uso. Queria transformar ele num servidor pequeno em casa: AdGuard Home e alguns
+containers. Um projeto de fim de semana.
 
-Só que quase tudo que eu queria exige **root**. E o caminho oficial da Xiaomi
-é: pedir o unlock no Mi Unlock, esperar 7 dias, usar o mesmo chip SIM e rodar
-um programinha que só existe para Windows. No meu caso tinha um detalhe: **o
-slot do SIM está quebrado**. Sem SIM, o Mi Unlock nem começa.
+Quase tudo isso pede root. E o caminho da Xiaomi é chato por definição: pedir
+unlock no Mi Unlock, esperar uma semana, usar o mesmo chip SIM e rodar um
+programa que só existe para Windows. No meu caso tinha um detalhe a mais: o
+slot do SIM está quebrado. Sem SIM você não passa nem da primeira tela.
 
-Foi aí que descobri que o tal `MediatekBootloaderUnlock` que circula por aí é
-só uma **embalagem Windows do [mtkclient](https://github.com/bkerler/mtkclient)**.
-Ou seja: dava para fazer a mesma coisa no Mac, direto, sem depender do Mi
-Unlock. O problema é que no macOS o caminho tem algumas pedras específicas (o
-driver CDC da Apple, a versão do libusb, o macFUSE, um bug de parsing...).
-Passei um tempo debugando e cheguei num fluxo que funcionou de primeira no
-aparelho.
+Foi então que caiu a ficha. Aquele `MediatekBootloaderUnlock` que circula em
+fórum é só uma pasta com o [mtkclient](https://github.com/bkerler/mtkclient)
+dentro. Ou seja, dá para fazer a mesma coisa no Mac, direto, sem depender do
+Mi Unlock. Só que no macOS o caminho tem umas pedras específicas: o driver CDC
+da Apple, o caminho do libusb, o macFUSE e um bug de parsing que me custou uma
+tarde. Depois de resolver tudo isso, o aparelho destravou de primeira.
 
-Este repositório é esse fluxo, empacotado e documentado, para quem tem o mesmo
-problema — especialmente quem tem só um Mac e um celular MediaTek antigo.
+Este repositório é esse fluxo, com os scripts e o que eu aprendi no caminho.
+Hoje o Redmi 9 roda 24 horas por dia fazendo o que eu queria.
 
-Depois do root, o Redmi 9 virou exatamente o que eu queria: um servidor de
-casa, rodando 24/7, custando zero.
+## O que muda em relação ao Mi Unlock
 
----
+O Mi Unlock exige conta Mi, chip SIM, Windows e sete dias de espera. Aqui você
+precisa de um Mac, um cabo e uns 40 minutos, sendo que a maior parte é backup.
 
-## O que tem aqui
+O unlock em si é uma escrita na partição `seccfg`. O mtkclient lê a partição,
+confere o cabeçalho e só então grava. Se não reconhecer o formato, ele aborta
+sem tocar em nada.
 
-| | Mi Unlock oficial | Este projeto |
-|---|---|---|
-| Espera de 7 dias | sim | **não** |
-| Precisa de chip SIM | sim | **não** |
-| Precisa de Windows | sim | **não** (macOS nativo) |
-| Conta Mi | obrigatória | não |
-| Apaga seus dados | sim | **opcional** (neste fluxo, não precisou) |
-| Root (Magisk) | manual depois | incluído |
+Depois vem o root: patch da `boot` stock com o Magisk e flash via fastboot. É o
+procedimento normal do Magisk, nada de especial.
 
-O que o projeto faz, na prática:
+## O que você precisa
 
-1. entra no **BROM** do chip (o modo de recuperação de fábrica da MediaTek);
-2. sobe um **DA** (download agent) com o mtkclient para conversar com a flash;
-3. salva um **backup** das partições críticas (`seccfg`, `boot`, `vbmeta`,
-   `preloader`, `nvram`, `nvdata`, `persist`);
-4. grava o `seccfg` para **destravar o bootloader**;
-5. (opcional) apaga os dados e desativa verity/verification;
-6. instala o **Magisk** patchando a `boot` stock.
+- macOS (testei em Apple Silicon; Intel provavelmente funciona)
+- Homebrew
+- Python 3.11
+- libusb e android-platform-tools, os dois saem pelo brew
+- cabo USB de dados, de preferência direto no Mac, sem hub
+- bateria acima de 50%
 
----
-
-## Requisitos
-
-- **Mac** (testado em Apple Silicon; Intel deve funcionar, não testei)
-- **Homebrew**
-- **Python 3.11** (`brew install python@3.11`) — o `setup.sh` avisa se faltar
-- **libusb** (`brew install libusb`)
-- **adb / fastboot** (`brew install android-platform-tools`)
-- Cabo USB de dados, de preferência **direto no Mac** (sem hub)
-- Bateria acima de **50%**
-
-Aparelho testado:
+O aparelho que usei:
 
 ```
-Redmi 9 (M2004J19C) — codename galahad
-SoC: MediaTek MT6768 (Helio G80/G85)
-MIUI 13 / Android 12 — V13.0.2.0.SJCMIXM
+Redmi 9 (M2004J19C), codename galahad
+MediaTek MT6768 (Helio G80/G85)
+MIUI 13 / Android 12, build V13.0.2.0.SJCMIXM
 seccfg V4, BROM 0e8d:0003
 ```
 
-Outros MediaTek com `seccfg` V3/V4 e suporte ao exploit Kamakiri no mtkclient
-provavelmente funcionam — mas **só testei nesse**.
+Outros MediaTek com seccfg V3 ou V4 e suporte ao Kamakiri no mtkclient podem
+funcionar, mas eu não testei. Se o seu modelo não aparecer em
+`./mtk devices --filter <modelo>`, não insista.
 
----
+## Como rodar
 
-## Começando
-
-### Caminho 1 — com um agente de IA (o mais fácil)
-
-Se você usa OpenCode, Claude Code, Cursor ou similar, clone o repo, abra a
-pasta no agente e cole isto:
-
-```text
-Leia o arquivo COMECE-AQUI.md deste repositório e me guie passo a passo.
-Explique cada etapa antes de rodar, confirme o estado do meu celular via adb e
-NÃO rode nenhuma etapa destrutiva (unlock/wipe/flash) sem eu confirmar.
-Se algo falhar, leia PLANO-B.md antes de tentar de novo.
-```
-
-O agente consegue rodar o `setup.sh`, os backups e as checagens por você; o que
-ele **não** consegue fazer é apertar os botões do celular e trocar o cabo —
-essas partes ele vai te pedir.
-
-### Caminho 2 — manual
+Clone e deixe o `setup.sh` fazer o trabalho chato. Ele instala as dependências,
+clona o mtkclient num commit fixo, aplica os patches deste repo e roda o
+autoteste.
 
 ```bash
 git clone https://github.com/alvsconcelos/redmi-9-root-without-waiting
@@ -112,127 +76,119 @@ cd redmi-9-root-without-waiting
 ./setup.sh
 ```
 
-O `setup.sh` instala as dependências, clona o mtkclient num commit fixo,
-aplica os patches de macOS deste repo e roda o autoteste.
-
-Depois, na ordem:
+Daqui para frente, o guia com os sintomas e a ordem exata está no
+[COMECE-AQUI.md](COMECE-AQUI.md). Um resumo:
 
 ```bash
-# 0. com o celular ligado e depuração USB ativa
+# com o celular ligado e depuração USB ativa
 ./check.sh
 
-# 1. teste somente leitura (não grava nada)
+# teste de leitura, não grava nada
 sudo -E ./unlock.sh --probe
 
-# 2. backup das partições críticas (somente leitura)
+# backup, também somente leitura
 sudo -E ./backup.sh
 ./verify-backup.sh backups/<data>
-# COPIE backups/<data> para fora do Mac!
 
-# 3. destravar o bootloader (grava só o seccfg)
-sudo -E ./unlock.sh              # digite DESTRAVAR
-adb shell getprop ro.boot.flash.locked        # esperado: 0
+# destravar o bootloader (grava só o seccfg)
+sudo -E ./unlock.sh
+adb shell getprop ro.boot.flash.locked      # esperado: 0
 
-# 4. OPCIONAL: apagar dados + desativar verity
-sudo -E ./unlock.sh --wipe       # digite APAGAR
+# opcional: apagar dados e desativar verity
+sudo -E ./unlock.sh --wipe
 
-# 5. root
+# root
 adb install Magisk-v31.1.apk
 adb push backups/<data>/boot.img /sdcard/Download/
-#    no app Magisk: Instalar > Selecionar e corrigir um arquivo > Download/boot.img
+# no app: Instalar > Selecionar e corrigir um arquivo > Download/boot.img
 adb pull /sdcard/Download/magisk_patched-XXXXX.img .
 adb reboot bootloader
 fastboot flash boot magisk_patched-XXXXX.img
 fastboot reboot
 ```
 
-> **No macOS, `sudo -E` é obrigatório em tudo que fala com o BROM.** Sem root,
-> o libusb não consegue tomar a interface 0 do BROM do driver CDC da Apple e
-> você recebe `[Errno 13] Access denied`. Isso foi o que mais me custou tempo.
+Copie `backups/<data>` para um pendrive ou para a nuvem antes de qualquer
+escrita. Dentro daquela pasta tem IMEI e calibração do aparelho, então ela não
+vai para o Git (o `.gitignore` já cuida disso).
 
-Se travar em algum ponto: **[`COMECE-AQUI.md`](COMECE-AQUI.md)** tem o passo a
-passo com os sintomas, e **[`PLANO-B.md`](PLANO-B.md)** tem o diagnóstico e as
-alternativas (Windows, Linux, VM).
+### Se você usa um agente de IA
 
----
+Funciona bem. Abra a pasta no OpenCode, Claude Code, Cursor ou equivalente e
+cole:
 
-## Como funciona (resumo técnico)
+```text
+Leia o COMECE-AQUI.md deste repositório e me guie passo a passo.
+Explique cada etapa antes de rodar, confirme o estado do celular via adb e não
+rode nada que grave na flash (unlock, wipe, flash, restore) sem eu confirmar.
+Se algo falhar, leia PLANO-B.md antes de tentar de novo.
+```
 
-- O **BROM** é uma ROM de fábrica dentro do SoC. Ele aparece no USB como
-  `0e8d:0003` por menos de um segundo ao ligar o aparelho — por isso o
-  mtkclient precisa estar rodando **antes** de você conectar o cabo.
-- No macOS, esse BROM se apresenta como **CDC ACM**, e o driver
-  `AppleUSBCDCACMControl` segura a interface 0. O exploit Kamakiri usa
-  justamente essa interface. Com `sudo`, o libusb consegue tomar o dispositivo
-  (sem sudo: `EACCES`).
-- O `mtkclient` aplica o exploit, sobe o DA e passa a ler/escrever a flash.
-- O unlock em si é uma escrita na partição **`seccfg`** (lock state `2` →
-  `3`). O mtkclient lê, valida o cabeçalho `MMMM` e aborta se não reconhecer —
-  ele não grava às cegas.
-- O root é o fluxo normal do Magisk: patch da `boot` stock + `fastboot flash`.
+O agente roda setup, checagens e backup sozinho. Os botões do celular e o cabo
+vão sobrar para você.
 
-Patches aplicados ao mtkclient (em `patches/0001-macos-fixes.patch`):
+## O tropeço que tomou mais tempo
 
-| Arquivo | Correção |
-|---|---|
-| `Exploit/kamakiri.py` | reutiliza o handle USB já aberto em vez de reabrir com `usb.core.find()` |
-| `Library/mtk_main.py` | `multi "a; b; c"` aceita espaço depois do `;` (antes o argparse abortava no meio) |
-| `DA/mtk_da_handler.py` | tolera ausência do macFUSE |
-| `Filesystem/mtkdafs.py` | tolera ausência do macFUSE |
+No macOS, o BROM do MediaTek aparece como um dispositivo CDC ACM, e o driver
+`AppleUSBCDCACMControl` fica dono da interface 0. O exploit do Kamakiri usa
+exatamente essa interface. Sem root, o libusb não consegue tomar o dispositivo
+e você leva `[Errno 13] Access denied` no meio do payload.
 
----
+Com `sudo -E` funciona. Levei um tempo para aceitar que era só isso, porque a
+mensagem parece problema de permissão de arquivo e não é.
 
-## O que este projeto **não** faz
+Se você rodar qualquer comando de BROM sem sudo, o erro volta. Vale para o
+probe e para o backup também.
 
-- Não remove **conta Mi / Find Device / FRP**. Saia da conta Mi no celular
-  antes de apagar os dados.
-- Não conserta IMEI, não troca região, não instala ROM.
-- Não garante funcionar em outros modelos — só testei no Redmi 9 `galahad`.
+## O que acontece por baixo
 
----
+O BROM é uma ROM de fábrica dentro do SoC. Ele aparece no USB por menos de um
+segundo quando o aparelho liga, por isso o comando precisa estar rodando antes
+de você conectar o cabo. O mtkclient fica em loop esperando esse momento.
 
-## Scripts
+Quando o BROM responde, o mtkclient aplica o exploit, sobe o DA e passa a ler e
+escrever a flash. O unlock grava o `seccfg` (lock state 2 vira 3). O root é o
+Magisk de sempre.
 
-| Arquivo | O que faz |
-|---|---|
-| `setup.sh` | instala dependências, clona o mtkclient, aplica patches |
-| `COMECE-AQUI.md` | guia principal, na ordem certa |
-| `PASSO-A-PASSO.md` | versão detalhada, com explicações |
-| `PLANO-B.md` | diagnóstico do macOS + alternativas (Windows/Linux/VM) |
-| `unlock.sh --probe` | teste de leitura (não grava nada) |
-| `backup.sh` | backup somente leitura das partições críticas |
-| `verify-backup.sh` | confere tamanho, assinatura e estrutura do `seccfg` |
-| `unlock.sh` | etapa 1: grava o `seccfg` (destrava) |
-| `unlock.sh --wipe` | etapa 2 (opcional): apaga dados + desativa verity |
-| `restore.sh` | volta `boot`/`vbmeta` (e `seccfg`) do backup |
-| `flash-boot.sh` | grava uma `boot` patchada via BROM |
-| `diag-brom.sh` | testa permissões USB do BROM em 30 s |
-| `check.sh` | identifica modelo/SoC via adb |
-| `selftest.sh` | valida os comandos offline (sem celular) |
-| `usb-watch.sh` | mostra o que aparece no USB |
-| `mtk` | atalho para o mtkclient com o Python/libusb certos |
+Os patches que este repo aplica no mtkclient:
 
----
+- `Exploit/kamakiri.py`: reutiliza o handle USB já aberto em vez de reabrir
+  com `usb.core.find()`
+- `Library/mtk_main.py`: `multi "a; b; c"` aceita espaço depois do ponto e
+  vírgula; antes o argparse morria no meio do script
+- `DA/mtk_da_handler.py` e `Filesystem/mtkdafs.py`: toleram a ausência do
+  macFUSE
 
-## Segurança: o que pode dar errado
+## O que eu não testei
 
-| Operação | Risco | Se falhar |
-|---|---|---|
-| gravar `seccfg` | bootloader em estado estranho | `sudo -E ./restore.sh <backup> --seccfg` |
-| apagar `metadata`/`userdata`/`md_udc` | perde os dados (era o objetivo) | o sistema recria |
-| gravar `vbmeta` | verity inconsistente → não boota | `sudo -E ./restore.sh <backup>` |
-| gravar `boot` (Magisk) | bootloop | `sudo -E ./restore.sh <backup>` ou `fastboot flash boot <boot stock>` |
-| `preloader` / `lk` | **não são tocados** | — |
+Não testei em macOS Intel, não testei em outro celular e não testei com outra
+versão do MIUI. Também não mexi em IMEI, região nem ROM.
 
-O unlock **não** mexe em `preloader`, `lk`, `tee`, `nvram` nem `persist`. E o
-BROM é ROM do chip: mesmo que o aparelho não ligue, o Mac volta a falar com ele.
-O pior caso realista é "não sobe até você rodar o restore", não brick
-permanente. Ainda assim: **backup primeiro, sempre.**
+O unlock não remove conta Mi, Find Device ou FRP. Saia da conta no aparelho
+antes de apagar os dados, senão a proteção de ativação pode pedir ela depois.
 
-**Nunca** rode `da seccfg lock` com boot/recovery modificado. É a forma mais
-fácil de brickar de verdade.
+## Se der errado
 
----
+O pior caso realista é o celular não subir. O BROM é ROM de chip, então o Mac
+continua falando com ele, e o `restore.sh` devolve `boot`, `vbmeta` e `seccfg`
+a partir do backup.
+
+```bash
+sudo -E ./restore.sh backups/<data>
+sudo -E ./restore.sh backups/<data> --seccfg
+```
+
+Se ainda estiver bootando e você só quer voltar o kernel:
+
+```bash
+fastboot flash boot backups/<data>/boot.img
+```
+
+O que pode dar errado, em ordem de gravidade: cabo cair no meio da escrita do
+`seccfg` (o único ponto realmente sensível), DA não gravar o `seccfg`, MIUI não
+subir depois do wipe. Todos têm volta pelo BROM ou pelo fastboot.
+
+Nunca rode `da seccfg lock` com boot ou recovery modificado. Essa é a receita
+de brick de verdade.
 
 ## Resultado no meu aparelho
 
@@ -243,124 +199,89 @@ sys.boot_completed          = 1
 magiskd                     = rodando como root
 ```
 
-Os dados continuaram intactos (7,6 GB em uso) — não precisei do wipe.
+Os dados continuaram no lugar, 7,6 GB em uso. Não precisei do wipe.
 
----
+## Arquivos
 
-## Perguntas frequentes
-
-**Preciso apagar os dados?**
-Não necessariamente. O caminho oficial costuma pedir, mas neste aparelho o
-MIUI subiu normalmente depois do unlock. O wipe ficou como etapa opcional.
-
-**Funciona no macOS Intel?**
-Provavelmente. O `setup.sh` detecta `/usr/local` e `/opt/homebrew`. Não testei.
-
-**Funciona em outro celular MediaTek?**
-Talvez. Precisa de `seccfg` V3/V4 e suporte ao exploit no mtkclient. Verifique
-com `./mtk devices --filter <modelo>`. Se não estiver na lista, não force.
-
-**Por que precisa de `sudo`?**
-Porque o driver CDC da Apple toma a interface 0 do BROM, e só root consegue
-tomar o dispositivo do driver. Sem isso: `Access denied`.
-
-**Vou perder o root na próxima atualização do MIUI?**
-Sim. Atualize, extraia a nova `boot`, patche de novo com o Magisk e grave.
-
-**Isso remove a conta Mi / Find Device?**
-Não. Saia da conta no celular antes de apagar os dados.
-
----
+| Arquivo | Para quê |
+|---|---|
+| `setup.sh` | dependências, clone do mtkclient, patches |
+| `COMECE-AQUI.md` | guia principal, na ordem |
+| `PASSO-A-PASSO.md` | versão detalhada |
+| `PLANO-B.md` | diagnóstico do macOS e alternativas |
+| `unlock.sh` | `--probe`, destravar, `--wipe` |
+| `backup.sh` | backup somente leitura |
+| `verify-backup.sh` | confere tamanho, assinatura e seccfg |
+| `restore.sh` | volta boot, vbmeta e seccfg |
+| `flash-boot.sh` | grava boot patchada via BROM |
+| `diag-brom.sh` | testa permissão USB do BROM |
+| `check.sh` | modelo e SoC via adb |
+| `selftest.sh` | valida os comandos sem celular |
 
 ## Créditos
 
-Este projeto é só a cola em volta de ferramentas de outras pessoas:
+O trabalho pesado não é meu.
 
-- **[bkerler/mtkclient](https://github.com/bkerler/mtkclient)** — o motor de
-  tudo: exploit Kamakiri, DA, leitura/escrita da flash. Licença GPLv3.
-- **[topjohnwu/Magisk](https://github.com/topjohnwu/Magisk)** — o root. GPLv3.
-- **MediatekBootloaderUnlock** (o pacote Windows com `UsbDk` +
-  `UnlockBootloader.bat`) — foi o que me mostrou que o caminho existia; por
-  dentro é o mtkclient.
-- Comunidade Xiaomi/MTK pelos vários fóruns sobre BROM, `seccfg` e Kamakiri.
+O [mtkclient](https://github.com/bkerler/mtkclient), do bkerler, faz o
+exploit, o DA e toda a conversa com a flash. É GPLv3, e os patches em
+`patches/` são derivados dele, então também são GPLv3. O
+[Magisk](https://github.com/topjohnwu/Magisk), do topjohnwu, é o root. O
+`MediatekBootloaderUnlock` que circula em fórum foi o que me mostrou que o
+caminho existia, e por dentro é o mtkclient também.
 
-Os patches deste repo (`patches/`) são derivados do mtkclient e portanto
-seguem GPLv3. Os scripts e a documentação são MIT.
+Os scripts e a documentação deste repo são MIT.
 
----
-
-## Aviso / Disclaimer
-
-**AS IS. SEM GARANTIA DE NENHUM TIPO.**
+## Aviso
 
 Isto mexe no bootloader e na flash do seu aparelho. Pode dar errado, pode
-apagar seus dados, pode deixar o celular sem bootar, pode anular a garantia e
-pode (em teoria) inutilizar o aparelho. **Você faz por sua conta e risco.**
-Não me responsabilizo por danos, perda de dados, aparelho brickado, conta
-bloqueada ou qualquer outra consequência.
+apagar seus dados, pode deixar o celular sem bootar, pode anular a garantia e,
+em teoria, pode inutilizar o aparelho.
 
-Leia todos os scripts antes de rodar. Faça backup. Não rode nada que você não
-entende.
+Você faz por sua conta e risco. Não me responsabilizo por dano, perda de dados,
+aparelho brickado, conta bloqueada nem qualquer outra consequência.
 
----
+Leia os scripts antes de rodar. Faça backup. Não rode nada que você não
+entendeu.
 
 ## Licença
 
-Scripts e documentação: [MIT](LICENSE).
-Patches em `patches/`: GPLv3 (derivados do mtkclient).
+Scripts e documentação: [MIT](LICENSE). Os patches em `patches/` seguem
+GPLv3, por serem derivados do mtkclient.
 
 ---
 
 # English
 
-## Unlocking the Redmi 9 bootloader and rooting it on macOS — no Mi Unlock, no SIM card
-
 I had an old Redmi 9 sitting in a drawer and wanted to turn it into a small
-home server (AdGuard Home, a couple of containers, a monitoring dashboard).
-Almost everything I wanted needs **root**, and Xiaomi's official path requires
-Mi Unlock, a 7-day wait, the same SIM card, and a Windows-only tool. My SIM
-slot is broken, so that route was closed.
+home server: AdGuard Home and a couple of containers.
+Most of that needs root, and Xiaomi's official route asks for Mi Unlock, a
+seven day wait, the same SIM card and a Windows-only tool. My SIM slot is
+broken, so that route was closed from the start.
 
-The `MediatekBootloaderUnlock` package that circulates online is just a Windows
-wrapper around **[mtkclient](https://github.com/bkerler/mtkclient)**. So the
-same job can be done natively on macOS. It took some debugging (the Apple CDC
-driver, libusb paths, macFUSE, a parsing bug), and this repo is the working
-flow, packaged and documented.
+Turns out `MediatekBootloaderUnlock`, the package that circulates in forums, is
+just a Windows wrapper around [mtkclient](https://github.com/bkerler/mtkclient).
+The same job can be done natively on macOS. This repo is the flow that worked
+on my device, with the scripts and the notes I wish I had found.
 
-> **Portuguese only, on purpose:** the scripts, log messages and documentation
-> are written in **pt-BR** (that's my native language). The **commands are
-> copy-paste ready** and do not depend on the language. If you don't read
-> Portuguese, use the AI-agent prompt below — it will walk you through
-> everything in your language.
+One warning about the language: the scripts, log messages and the detailed
+docs are in **Portuguese**, my native language. The commands are copy-paste
+ready, so you can follow along even if you don't read Portuguese. If you want
+a guided walkthrough in your own language, use the AI-agent prompt from the
+Portuguese section: point the agent at `COMECE-AQUI.md` and it will translate
+as it goes.
 
 ### What it does
 
-1. Enters the MediaTek **BROM** mode (`0e8d:0003`).
-2. Uses **mtkclient** to load a DA and talk to the flash.
-3. Dumps a **backup** of `seccfg`, `boot`, `vbmeta`, `preloader`, `nvram`,
-   `nvdata`, `persist`.
-4. Writes **`seccfg`** to unlock the bootloader (lock state `2` → `3`).
-5. *(optional)* wipes data and disables verity/verification.
-6. Installs **Magisk** by patching the stock `boot` image.
+It enters the MediaTek BROM, uses mtkclient to load a DA, dumps a backup of
+`seccfg`, `boot`, `vbmeta`, `preloader`, `nvram`, `nvdata` and `persist`, then
+writes `seccfg` to unlock the bootloader. Optionally it wipes data and disables
+verity. The root step is the ordinary Magisk flow: patch the stock `boot` and
+flash it.
 
-### Requirements
+### Requirements and quick start
 
-- macOS (tested on Apple Silicon; Intel probably works)
-- Homebrew, Python 3.11, libusb, `android-platform-tools` (adb/fastboot)
-- USB data cable, straight into the Mac (no hub), battery above 50%
-
-Tested device:
-
-```
-Redmi 9 (M2004J19C) — codename galahad
-MediaTek MT6768 (Helio G80/G85)
-MIUI 13 / Android 12 — V13.0.2.0.SJCMIXM
-```
-
-Other MediaTek devices with `seccfg` V3/V4 and Kamakiri support in mtkclient
-*may* work. I only tested this one.
-
-### Quick start
+macOS, Homebrew, Python 3.11, libusb, android-platform-tools, a data cable and
+a battery above 50%.
 
 ```bash
 git clone https://github.com/alvsconcelos/redmi-9-root-without-waiting
@@ -368,55 +289,59 @@ cd redmi-9-root-without-waiting
 ./setup.sh
 ```
 
-Then follow **[`COMECE-AQUI.md`](COMECE-AQUI.md)** (Portuguese, but mostly
-commands). Short version:
+Then follow [COMECE-AQUI.md](COMECE-AQUI.md). Short version:
 
 ```bash
-sudo -E ./unlock.sh --probe      # read-only test
-sudo -E ./backup.sh              # read-only backup
+sudo -E ./unlock.sh --probe
+sudo -E ./backup.sh
 ./verify-backup.sh backups/<data>
-sudo -E ./unlock.sh              # stage 1: unlock (writes seccfg)
-sudo -E ./unlock.sh --wipe       # stage 2 (optional): wipe + disable verity
-# Magisk: patch boot.img in the app, then
-fastboot flash boot magisk_patched-XXXXX.img
+sudo -E ./unlock.sh          # writes seccfg
+sudo -E ./unlock.sh --wipe   # optional: wipe and disable verity
 ```
 
-### The macOS gotcha
+### The macOS part everyone trips on
 
-**Everything that talks to BROM must run as root (`sudo -E`).** The BROM
-enumerates as a CDC ACM device and `AppleUSBCDCACMControl` owns interface 0.
-Without root, libusb cannot claim it and you get `[Errno 13] Access denied`.
-With `sudo`, it works. This was 90% of the debugging.
+The BROM enumerates as a CDC ACM device and `AppleUSBCDCACMControl` owns
+interface 0, which is the interface the Kamakiri exploit needs. Without root,
+libusb cannot claim it and you get `[Errno 13] Access denied` in the middle of
+the payload. Run everything with `sudo -E` and it works. That was most of my
+debugging time.
+
+### Tested on
+
+```
+Redmi 9 (M2004J19C), galahad
+MediaTek MT6768 (Helio G80/G85)
+MIUI 13 / Android 12, V13.0.2.0.SJCMIXM
+```
+
+Other MediaTek devices with seccfg V3 or V4 and Kamakiri support may work. I
+only tested this one, on Apple Silicon.
 
 ### What it does not do
 
-- Does not remove Mi account / Find Device / FRP.
-- Does not repair IMEI, change region or flash ROMs.
-- No guarantee for other models.
+It does not remove Mi account, Find Device or FRP. It does not repair IMEI,
+change region or flash ROMs.
 
 ### Safety
 
 The unlock only writes `seccfg`. `preloader`, `lk`, `tee`, `nvram` and
-`persist` are never touched. **BROM is chip ROM** — even if the phone refuses
-to boot, the Mac can still talk to it and `restore.sh` can bring it back.
-Still: **make the backup first**, and never run `da seccfg lock` with a
+`persist` are never touched. BROM is chip ROM, so even a phone that refuses to
+boot can still talk to the Mac, and `restore.sh` brings it back from the
+backup. Make the backup first anyway, and never run `da seccfg lock` with a
 modified boot image.
 
-### Credits
+### Credits and license
 
-- **[bkerler/mtkclient](https://github.com/bkerler/mtkclient)** — GPLv3. The
-  exploit, the DA, all the flash I/O. This repo is mostly glue.
-- **[topjohnwu/Magisk](https://github.com/topjohnwu/Magisk)** — GPLv3. Root.
-- **MediatekBootloaderUnlock** (Windows bundle) — showed the path existed.
-- Xiaomi/MTK community forums for BROM, `seccfg` and Kamakiri knowledge.
-
-Patches in `patches/` are derivative works of mtkclient and therefore GPLv3.
-Scripts and docs are MIT.
+[mtkclient](https://github.com/bkerler/mtkclient) does the exploit, the DA and
+all the flash I/O. GPLv3. Patches under `patches/` are derivative works and
+therefore GPLv3 too. [Magisk](https://github.com/topjohnwu/Magisk) is the root,
+also GPLv3. Scripts and docs here are MIT.
 
 ### Disclaimer
 
-**AS IS. NO WARRANTY OF ANY KIND.** This modifies your bootloader and flashes
-your device. It can fail, wipe your data, leave the phone unbootable, void your
-warranty, and (in theory) brick it. **You do this at your own risk.** I take no
-responsibility for any damage, data loss, bricked device, blocked account or
-any other consequence. Read the scripts before running them. Make a backup.
+This modifies your bootloader and flashes your device. It can fail, wipe your
+data, leave the phone unbootable, void the warranty and, in theory, brick it.
+You do this at your own risk. I take no responsibility for damage, data loss,
+a bricked device, a blocked account or anything else. Read the scripts before
+running them, make a backup, and don't run what you don't understand.
