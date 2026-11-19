@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# GUI opcional do mtkclient (precisa de PySide6).
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+if ! .venv/bin/python -c "import PySide6" >/dev/null 2>&1; then
+  cat <<'EOF'
+PySide6 nao instalado. Para habilitar a interface grafica:
+
+  .venv/bin/pip install pyside6 shiboken6
+
+Depois rode: ./mtk-gui
+EOF
+  exit 1
+fi
+
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+exec .venv/bin/python mtkclient/mtk_gui.py

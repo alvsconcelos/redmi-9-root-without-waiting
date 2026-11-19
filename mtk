@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Wrapper: roda o mtkclient com o Python/libusb corretos (macOS).
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+[[ -x "$HERE/.venv/bin/python" ]] || {
+  echo "Ambiente nao encontrado. Rode primeiro:  ./setup.sh" >&2
+  exit 1
+}
+
+# libusb do Homebrew: Apple Silicon usa /opt/homebrew, Intel usa /usr/local
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+
+exec "$HERE/.venv/bin/python" "$HERE/mtkclient/mtk.py" "$@"

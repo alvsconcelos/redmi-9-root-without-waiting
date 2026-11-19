@@ -1,0 +1,92 @@
+diff --git a/mtkclient/Library/DA/mtk_da_handler.py b/mtkclient/Library/DA/mtk_da_handler.py
+index a7ef654..07a84c7 100644
+--- a/mtkclient/Library/DA/mtk_da_handler.py
++++ b/mtkclient/Library/DA/mtk_da_handler.py
+@@ -16,7 +16,7 @@ from mtkclient.Library.Filesystem.mtkdafs import MtkDaFS
+ 
+ try:
+     from mfusepy import FUSE
+-except ImportError:
++except (ImportError, OSError):
+     FUSE = None
+ 
+ 
+diff --git a/mtkclient/Library/Exploit/kamakiri.py b/mtkclient/Library/Exploit/kamakiri.py
+index 4f8d75f..09151ff 100644
+--- a/mtkclient/Library/Exploit/kamakiri.py
++++ b/mtkclient/Library/Exploit/kamakiri.py
+@@ -32,19 +32,21 @@ class Kamakiri(Exploitation, metaclass=LogBase):
+         self.mtk.port.usbread(2)
+         self.mtk.port.usbread(2)
+ 
+-        # noinspection PyProtectedMember
+-        udev = usb.core.find(idVendor=0x0E8D, idProduct=0x3)
+-        try:
+-            # noinspection PyProtectedMember
+-            udev._ctx.managed_claim_interface = lambda *args, **kwargs: None
+-        except AttributeError as e:
+-            raise RuntimeError("libusb is not installed for port {}".format(udev.dev.port)) from e
++        # macOS: abrir o dispositivo uma segunda vez (usb.core.find) da EACCES
++        # porque o handle ja esta aberto com acesso exclusivo. Reutiliza o handle.
++        udev = getattr(self.mtk.port.cdc, "device", None)
++        if udev is None:
++            udev = usb.core.find(idVendor=0x0E8D, idProduct=0x3)
++            try:
++                # noinspection PyProtectedMember
++                udev._ctx.managed_claim_interface = lambda *args, **kwargs: None
++            except AttributeError as e:
++                raise RuntimeError("libusb is not installed for port {}".format(udev.dev.port)) from e
+ 
+         try:
+             udev.ctrl_transfer(0xA1, 0, 0, self.var1, 0)
+         except usb.core.USBError as e:
+             self.lasterror = str(e)
+-            del udev
+         return True
+ 
+     def bruteforce(self, args, startaddr=0x9900):
+diff --git a/mtkclient/Library/Filesystem/mtkdafs.py b/mtkclient/Library/Filesystem/mtkdafs.py
+index 490d216..0b988f0 100644
+--- a/mtkclient/Library/Filesystem/mtkdafs.py
++++ b/mtkclient/Library/Filesystem/mtkdafs.py
+@@ -78,7 +78,7 @@ try:
+                 self.files[path]['st_mode'] &= ~0o222
+             return self.files[path]
+ 
+-except ImportError:
++except (ImportError, OSError):
+     print('fuse library not installed')
+ 
+     class MtkDaFS():
+diff --git a/mtkclient/Library/mtk_main.py b/mtkclient/Library/mtk_main.py
+index ab3cda2..fef6a58 100644
+--- a/mtkclient/Library/mtk_main.py
++++ b/mtkclient/Library/mtk_main.py
+@@ -438,7 +438,7 @@ class Main(metaclass=LogBase):
+             mtk = da_handler.configure_da(mtk)
+             if mtk is not None:
+                 for rcmd in commands:
+-                    self.args = parser.parse_args(rcmd.split(" "))
++                    self.args = parser.parse_args(rcmd.split())
+                     ArgHandler(self.args, config)
+                     cmd = self.args.cmd
+                     da_handler.handle_da_cmds(mtk, cmd, self.args)
+@@ -448,7 +448,8 @@ class Main(metaclass=LogBase):
+                 self.close()
+         elif cmd == "multi":
+             # Split the commands in the multi argument
+-            commands = self.args.commands.split(';')
++            # espacos depois de ";" viravam argumento vazio (argparse quebrava).
++            commands = [c.strip() for c in self.args.commands.split(';') if c.strip()]
+             da_handler = DaHandler(mtk, loglevel)
+             mtk = da_handler.connect(mtk, directory)
+             if mtk is None:
+@@ -457,7 +458,7 @@ class Main(metaclass=LogBase):
+             mtk = da_handler.configure_da(mtk)
+             if mtk is not None:
+                 for rcmd in commands:
+-                    self.args = parser.parse_args(rcmd.split(" "))
++                    self.args = parser.parse_args(rcmd.split())
+                     ArgHandler(self.args, config)
+                     cmd = self.args.cmd
+                     da_handler.handle_da_cmds(mtk, cmd, self.args)

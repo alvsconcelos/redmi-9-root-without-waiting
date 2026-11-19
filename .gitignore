@@ -1,0 +1,17 @@
+# dependencias locais (nunca versione)
+.venv/
+mtkclient/
+logs/
+
+# dados sensiveis do aparelho (IMEI, calibracao, backups)
+backups/
+hwparam.json
+.state
+*.bin
+*.img
+*.apk
+
+# sobras
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Alvaro Vasconcelos
+Copyright (c) 2026 alvsconcelos
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Excecao: os arquivos em patches/ sao derivados do projeto mtkclient
+(https://github.com/bkerler/mtkclient), licenciado sob GPLv3, e portanto
+seguem a GPLv3. O mtkclient nao e distribuido neste repositorio: ele e
+clonado pelo setup.sh a partir do repositorio original.
+
+Exception: files under patches/ are derivative works of mtkclient
+(https://github.com/bkerler/mtkclient), licensed under GPLv3, and are
+therefore GPLv3 as well. mtkclient itself is not distributed here; setup.sh
+clones it from the upstream repository.
