@@ -1,28 +1,28 @@
 # COMECE AQUI
 
-Guia na ordem certa, do zero ao root, no macOS.
+A ordem certa, do zero ao root, no macOS.
 
-> Se você é um agente de IA lendo isto: siga exatamente esta ordem, rode as
-> checagens por conta própria e **peça confirmação humana antes de qualquer
-> etapa que grave na flash** (`unlock.sh`, `unlock.sh --wipe`, `flash-boot.sh`,
-> `fastboot flash`, `restore.sh`). Se algo divergir do esperado, pare e leia
-> `PLANO-B.md`.
+Se você é um agente de IA lendo isto: siga a ordem, rode as checagens sozinho e
+peça confirmação antes de qualquer coisa que grave na flash (`unlock.sh`,
+`--wipe`, `flash-boot.sh`, `fastboot flash`, `restore.sh`). Se algo divergir do
+esperado, pare e leia o `PLANO-B.md`.
 
----
+## Antes de qualquer comando
 
-## Regras de ouro
+Backup primeiro. Sem uma pasta `backups/<data>/` com `seccfg.bin`, `boot.img` e
+`vbmeta.img`, não se faz o unlock.
 
-1. **Backup primeiro.** Sem `backups/<data>/` com `seccfg.bin`, `boot.img` e
-   `vbmeta.img`, não faça o unlock.
-2. **`sudo -E` em tudo que fala com o BROM.** Sem root o macOS nega a
-   interface 0 (`[Errno 13] Access denied`).
-3. **Não desconecte o cabo** durante `Write:`/`Writing`.
-4. **Nunca** rode `da seccfg lock` com boot/recovery modificado.
-5. Se algo der errado: pare, desconecte, segure Power ~15 s, recomece.
+Tudo que fala com o BROM precisa de `sudo -E`. Sem root o macOS nega a
+interface 0 e você leva `[Errno 13] Access denied`. Não é falta de permissão de
+arquivo, é o driver CDC da Apple segurando o dispositivo.
 
----
+Não desconecte o cabo enquanto aparecer `Write:` ou `Writing`.
 
-## 0. Preparar
+Nunca rode `da seccfg lock` com boot ou recovery modificado.
+
+Se algo der errado, desconecte, segure Power por uns 15 segundos e recomece.
+
+## Preparar
 
 ```bash
 git clone https://github.com/alvsconcelos/redmi-9-root-without-waiting
@@ -30,12 +30,12 @@ cd redmi-9-root-without-waiting
 ./setup.sh
 ```
 
-No celular (ligado, uso normal):
+No celular, com ele ligado e em uso normal: ative Opções do desenvolvedor,
+ligue a Depuração USB e autorize o Mac. Saia da conta Mi ou pelo menos desative
+"Localizar dispositivo", porque o unlock não remove conta Mi e a proteção de
+ativação pode pedir ela depois.
 
-- ative **Opções do desenvolvedor → Depuração USB** e autorize o Mac;
-- saia da **conta Mi** / desative "Localizar dispositivo" (o unlock não remove
-  conta Mi; se sobrar conta, a proteção de ativação pode pedir ela depois);
-- salve fotos/arquivos que importam (se for fazer o wipe opcional):
+Se você pretende apagar os dados mais tarde, salve o que importa agora:
 
 ```bash
 mkdir -p ~/mi-backup
@@ -51,138 +51,99 @@ Confira o aparelho:
 ./check.sh
 ```
 
-Esperado: `ro.board.platform = mt6768` e modelo `galahad` (Redmi 9).
+Você quer ver `ro.board.platform = mt6768` e o modelo `galahad`.
 
----
+## Entrar em BROM
 
-## 1. Como entrar em BROM (a parte que exige timing)
+O BROM fica ativo por menos de um segundo quando o aparelho liga, então o
+comando tem que estar rodando antes.
 
-O BROM fica ativo por **menos de 1 segundo** ao ligar. Por isso o comando tem
-que estar rodando **antes**.
+Deixe o comando esperando no Mac, desligue o celular de verdade (não reinicie),
+segure Vol− junto com Power, conecte o cabo direto no Mac, sem hub, e solte os
+botões quando o log começar a andar.
 
-1. Deixe o comando rodando no Mac (ele fica em `Waiting for PreLoader VCOM`).
-2. Desligue o celular **de verdade** (não reinicie).
-3. Segure **Vol− + Power**.
-4. Conecte o cabo **direto no Mac** (sem hub).
-5. Solte os botões quando o log começar a andar.
+Vol+ e Vol− ao mesmo tempo não entram em BROM no Redmi 9. Isso abre o factory
+mode, aquele menu chinês com VID `0e8d:200e`. Se acontecer, segure Power por 15
+segundos e o aparelho volta.
 
-- **Nunca** use Vol+ e Vol− juntos: no Redmi 9 isso entra em *factory mode*
-  (menu chinês, `0e8d:200e`). Se acontecer: segure Power ~15 s.
-- Se nada aparecer e o celular voltar ao MIUI: o timing falhou, repita.
-- O BROM aparece como `0e8d:0003` (ou preloader `0e8d:2000`, que também serve).
+Se nada aparecer e o MIUI subir de novo, o timing falhou. Repita.
 
----
-
-## 2. Teste de leitura (não grava nada)
+## Teste de leitura
 
 ```bash
 sudo -E ./unlock.sh --probe
 ```
 
-Esperado:
+O log bom passa por `BROM mode detected`, `Kamakiri Run`, `DA SLA is
+disabled`, `Boot to succeeded` e termina na tabela GPT com todas as partições.
 
-```
-Preloader - BROM mode detected.
-Exploitation - Kamakiri Run
-Exploitation - Done sending payload...
-DAXFlash - DA SLA is disabled
-DAXFlash - Boot to succeeded.
-GPT Table:
-```
+Se parar em `Access denied`, rode `sudo -E ./diag-brom.sh` e leia o
+`PLANO-B.md` antes de tentar outra coisa.
 
-- Chegou na tabela GPT? Siga.
-- `Access denied`? Rode `sudo -E ./diag-brom.sh` e leia `PLANO-B.md`.
-
----
-
-## 3. Backup (somente leitura)
+## Backup
 
 ```bash
 sudo -E ./backup.sh
 ./verify-backup.sh backups/<data>
 ```
 
-O `verify` precisa terminar com `RESULTADO: backup OK`. Ele confere tamanho,
-assinatura (`ANDROID!`, `AVB0`) e a estrutura do `seccfg` (V3/V4, lock state).
+O verify precisa terminar com `RESULTADO: backup OK`. Ele confere tamanho,
+assinatura (`ANDROID!` na boot, `AVB0` na vbmeta) e a estrutura do seccfg.
 
-**Copie para fora do Mac:**
+Copie a pasta para fora do Mac:
 
 ```bash
 cp -R backups/<data> ~/Desktop/
-# e para um pendrive/nuvem
 sudo chown -R "$(id -u):$(id -g)" backups hwparam.json .state
 ```
 
----
+Dentro da pasta tem IMEI e calibração do aparelho. Não publique isso.
 
-## 4. Destravar o bootloader (etapa 1)
+## Destravar o bootloader
 
 ```bash
 sudo -E ./unlock.sh
 ```
 
-Digite `DESTRAVAR` e entre em BROM. Executa **só**:
+Digite `DESTRAVAR` e entre em BROM. Essa etapa grava só o seccfg e reinicia.
+Dados, boot e vbmeta ficam como estão.
 
-```text
-da seccfg unlock
-reset
-```
-
-Nada mais é gravado: dados, `boot` e `vbmeta` ficam intactos.
-
-Depois, com o celular ligado:
+Com o celular ligado:
 
 ```bash
-adb shell getprop ro.boot.flash.locked        # esperado: 0
-adb shell getprop ro.boot.verifiedbootstate   # esperado: orange
+adb shell getprop ro.boot.flash.locked        # 0
+adb shell getprop ro.boot.verifiedbootstate   # orange
 ```
 
-- `0` / `orange` → pode seguir.
-- Continuou `1` → **pare**, não rode a etapa 2.
+Se o primeiro continuar 1, pare e não rode a etapa seguinte.
 
----
+## Apagar os dados (opcional)
 
-## 5. Wipe (opcional)
-
-O MIUI normalmente sobe sem apagar nada depois do unlock — foi o que aconteceu
-comigo (dados intactos). Só faça o wipe se quiser o aparelho limpo ou se o
-sistema começar a se comportar mal.
+No meu aparelho o MIUI subiu sem apagar nada, com os 7,6 GB de dados no lugar.
+Só faça o wipe se quiser o aparelho limpo ou se o sistema começar a se
+comportar mal.
 
 ```bash
 sudo -E ./unlock.sh --wipe
 ```
 
-Digite `APAGAR` e entre em BROM. Executa:
+Digite `APAGAR` e entre em BROM. Isso apaga `metadata`, `userdata` e `md_udc`,
+desativa verity e reinicia. O primeiro boot leva de 5 a 15 minutos e pode ficar
+parado no logo um tempo.
 
-```text
-e metadata,userdata,md_udc
-da vbmeta 3
-reset
-```
+## Root
 
-> Isso apaga **tudo**. Primeiro boot: 5–15 min, pode ficar parado no logo.
-
----
-
-## 6. Root (Magisk)
+Baixe o APK do Magisk em github.com/topjohnwu/Magisk/releases, instale e mande
+a boot stock para o celular:
 
 ```bash
-# 1. instale o app (baixe em github.com/topjohnwu/Magisk/releases)
 adb install Magisk-v31.1.apk
-
-# 2. mande a boot stock para o celular
 adb push backups/<data>/boot.img /sdcard/Download/
 ```
 
-No app **Magisk**:
-
-1. cartão **Magisk** → **Instalar**;
-2. **Selecionar e corrigir um arquivo**;
-3. escolha `Download/boot.img`;
-4. **não** marque "Recovery mode";
-5. espere gerar `Download/magisk_patched-XXXXX.img`.
-
-Depois:
+No app, abra o cartão Magisk, toque em Instalar, escolha "Selecionar e corrigir
+um arquivo" e pegue `Download/boot.img`. Não marque "Recovery mode". Ele gera
+um `magisk_patched-XXXXX.img` na mesma pasta.
 
 ```bash
 adb pull /sdcard/Download/magisk_patched-XXXXX.img .
@@ -191,57 +152,56 @@ fastboot flash boot magisk_patched-XXXXX.img
 fastboot reboot
 ```
 
-Alternativa sem fastboot (via BROM): `sudo -E ./flash-boot.sh magisk_patched-XXXXX.img`.
+Se preferir não usar fastboot, dá para gravar pelo BROM com
+`sudo -E ./flash-boot.sh magisk_patched-XXXXX.img`.
 
-Confira:
+Conferir:
 
 ```bash
-adb shell "ps -A | grep magiskd"        # deve aparecer magiskd como root
-adb shell "su -c id"                    # aprova o pedido na tela do celular
+adb shell "ps -A | grep magiskd"
+adb shell "su -c id"
 ```
 
-Se der bootloop:
+O `su` pede autorização na tela do celular.
+
+Se entrar em bootloop, volte a boot stock e reinicie:
 
 ```bash
 fastboot flash boot backups/<data>/boot.img
 fastboot reboot
 ```
 
----
+## Se algo der errado
 
-## 7. Se algo der errado
+Se não sair do logo, rode `sudo -E ./restore.sh backups/<data>` pelo BROM. Se
+ainda tiver fastboot, `fastboot flash boot backups/<data>/boot.img` resolve
+mais rápido.
 
-| Sintoma | O que fazer |
-|---|---|
-| Não sai do logo | `sudo -E ./restore.sh backups/<data>` (BROM) ou `fastboot flash boot backups/<data>/boot.img` |
-| Bootloop após Magisk | idem |
-| Bootloader em estado estranho | `sudo -E ./restore.sh backups/<data> --seccfg` (só com boot stock) |
-| Menu chinês na tela | factory mode, não é brick: segure Power ~15 s |
-| BROM não aparece | outro cabo/porta, sem hub; tente conectar sem botão nenhum |
-| `Access denied` | `sudo -E` + `./diag-brom.sh` + `PLANO-B.md` |
+Se o bootloader ficar num estado estranho, `sudo -E ./restore.sh
+backups/<data> --seccfg` devolve o seccfg original. Só faça isso com boot
+stock.
 
-O `restore.sh` se recusa a rodar sem backup válido — proteção, não bug.
-O BROM é ROM de fábrica: mesmo sem boot, o Mac fala com o aparelho.
+Menu chinês na tela não é brick, é factory mode. Power por 15 segundos.
 
-**Nunca** rode `da seccfg lock` com boot/recovery modificado.
+Se o BROM não aparecer, troque de cabo ou de porta, tire o hub, e tente
+conectar sem apertar botão nenhum.
 
----
+O `restore.sh` se recusa a rodar sem backup válido. É proteção, não bug. E o
+BROM é ROM de fábrica: mesmo sem boot, o Mac continua falando com o aparelho.
 
-## Mapa dos arquivos
+## Arquivos
 
-| Arquivo | Para quê |
-|---|---|
-| `setup.sh` | instala dependências + mtkclient + patches |
-| `unlock.sh --probe` | teste de leitura |
-| `backup.sh` | backup somente leitura |
-| `verify-backup.sh` | valida o backup (tamanho, assinatura, seccfg) |
-| `unlock.sh` | etapa 1: destrava (grava seccfg) |
-| `unlock.sh --wipe` | etapa 2: apaga dados + desativa verity |
-| `restore.sh` | volta boot/vbmeta/seccfg do backup |
-| `flash-boot.sh` | grava boot patchada via BROM |
-| `diag-brom.sh` | testa permissão USB do BROM (30 s) |
-| `check.sh` | identifica modelo/SoC via adb |
-| `selftest.sh` | valida os comandos offline (sem celular) |
-| `usb-watch.sh` | mostra o que aparece no USB |
-| `PASSO-A-PASSO.md` | versão detalhada, com explicações |
-| `PLANO-B.md` | diagnóstico do macOS e alternativas |
+- `setup.sh`: dependências, clone do mtkclient e patches
+- `unlock.sh --probe`: teste de leitura
+- `backup.sh`: backup somente leitura
+- `verify-backup.sh`: valida tamanho, assinatura e seccfg
+- `unlock.sh`: etapa 1, grava o seccfg
+- `unlock.sh --wipe`: etapa 2, apaga dados e desativa verity
+- `restore.sh`: volta boot, vbmeta e seccfg
+- `flash-boot.sh`: grava boot patchada pelo BROM
+- `diag-brom.sh`: testa a permissão USB em 30 segundos
+- `check.sh`: modelo e SoC via adb
+- `selftest.sh`: valida os comandos sem celular
+- `usb-watch.sh`: mostra o que aparece no USB
+- `PASSO-A-PASSO.md`: a versão detalhada, com explicações
+- `PLANO-B.md`: diagnóstico do macOS e alternativas

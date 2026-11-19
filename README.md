@@ -1,11 +1,22 @@
 # Redmi 9 com bootloader destravado e root, no macOS, sem Mi Unlock
 
+*Português*
+
 Em novembro de 2026 eu destravei o bootloader e instalei o Magisk num Redmi 9
 (`galahad`, MT6768, MIUI 13) usando um MacBook com Apple Silicon e um cabo USB.
 Sem Mi Unlock, sem os 7 dias de espera, sem cartão SIM e sem Windows.
 
 Funcionou no meu aparelho. Antes de repetir, leia o aviso lá no fim. É por sua
 conta e risco.
+
+*English*
+
+In November 2026 I unlocked the bootloader and installed Magisk on a Redmi 9
+(`galahad`, MT6768, MIUI 13) with an Apple Silicon MacBook and a USB cable. No
+Mi Unlock, no seven-day wait, no SIM card, no Windows.
+
+It worked on my phone. Before you repeat it, read the warning at the end. Your
+risk, your call.
 
 [Português](#por-que-eu-fiz-isso) · [English](#english)
 
